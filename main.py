@@ -1,507 +1,386 @@
-import sys, pygame
-import random
-import os
-import math
-import numpy as np
-import matplotlib.pyplot as plt
+"""Disease Propagation Simulator. Run with: python main.py."""
 import ast
+import math
+from pathlib import Path
+import random
 
-os.environ['SDL_AUDIODRIVER'] = 'dsp'
-pygame.init()
-saved_diseases = open("saved.txt", "a")
-saved_diseases.close()
+import pygame
 
-# Base Variables
-SIZE = (600, 400)
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
-GRAY = (128, 128, 128)
-PINK = (255, 192, 203)
-SPEED = 1
+SAVE_FILE = Path(__file__).resolve().with_name("saved.txt")
+SIZE = (800, 600)
+WHITE, BLACK = (255, 255, 255), (25, 25, 25)
+GREEN, RED, PINK = (35, 165, 75), (220, 55, 55), (210, 100, 175)
+FIELDS = [
+    ("Contagiousness (%)", 0, 100),
+    ("Population size (1 = largest, 3 = smallest)", 1, 3),
+    ("Social distancing (%)", 0, 100),
+    ("Days to recover", 1, 365),
+    ("Mortality (%)", 0, 100),
+    ("Recovered immunity (1 = yes, 2 = no)", 1, 2),
+    ("Initially infected (%)", 0, 100),
+]
 
-# Main window
-screen = pygame.display.set_mode(SIZE)
-pygame.display.set_caption("Disease Propagation")
-CLOCK = pygame.time.Clock()
 
-# Defines function to find distance between 2 points
-def distance(point1, point2):
-    return math.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
+def validate_factors(values):
+    return (isinstance(values, list) and len(values) == len(FIELDS)
+            and all(type(value) is int and low <= value <= high
+                    for value, (_, low, high) in zip(values, FIELDS)))
 
-# Defines function which uses recursion and a logrithmic algorithm to find all the circles that are colliding
-def collisions(points, colliding_points):
-    n = len(points)
 
-    # Base case: If there are three or fewer points, calculate the perimeter of the triangle directly
-    if n == 2:
-        if distance(points[0], points[1]) <= 16:
-            colliding_points.append((points[0], points[1]))
-            return colliding_points
-    elif n < 2:
-        return colliding_points
+def load_diseases(path=SAVE_FILE):
+    diseases, skipped = [], 0
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except FileNotFoundError:
+        return [], "No saved diseases yet."
+    except (OSError, UnicodeError) as error:
+        return [], f"Could not read saved diseases: {error}"
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            name, separator, data = line.partition("[")
+            factors = ast.literal_eval(separator + data)
+            if not name.strip() or not validate_factors(factors):
+                raise ValueError("Invalid disease")
+            diseases.append((name.strip(), factors))
+        except (ValueError, SyntaxError, TypeError, RecursionError):
+            skipped += 1
+    message = f"Skipped {skipped} invalid saved entry(s)." if skipped else ""
+    return diseases, message
 
-    # Sort points by x-coordinate and y-coordinate
-    points.sort(key=lambda p: (p[0], p[1]))
 
-    # Divide points into two equal parts by x-coordinate
-    left_half = points[:n // 2]
-    right_half = points[n // 2:]
+def save_disease(name, factors, path=SAVE_FILE):
+    if not name.strip() or any(char in name for char in "[]\r\n"):
+        raise ValueError("Use a name without brackets or line breaks.")
+    if not validate_factors(factors):
+        raise ValueError("Invalid disease settings.")
+    # Ensure an existing file without a final newline still accepts a new entry.
+    prefix = ""
+    if path.exists() and path.stat().st_size:
+        with path.open("rb") as existing:
+            existing.seek(-1, 2)
+            if existing.read(1) != b"\n":
+                prefix = "\n"
+    with path.open("a", encoding="utf-8") as output:
+        output.write(f"{prefix}{name.strip()} {factors}\n")
 
-    median_line_x = (left_half[-1][0] + right_half[0][0]) / 2
-    points_within_distance = [point for point in points if abs(point[0] - median_line_x) <= 8]
 
-    for i in range(len(points_within_distance) - 1):
-        if distance(points_within_distance[i], points_within_distance[i + 1]) <= 16:
-            colliding_points.append((points_within_distance[i], points_within_distance[i + 1]))
-
-    collisions(left_half, colliding_points)
-    collisions(right_half, colliding_points)
-
-    return colliding_points
-
-# Defines main class used for the people in the simulation
-class Person():
-    # Class vairables
-    radius = 8
-    speed = SPEED
-
-    # Initializes person
-    def __init__(self, cont, distancing, recovery_death_speed, mortality, recovered_immunity, initial_infected, center):
-        self.center = center
-        self.cont = cont
-        self.distancing = True if random.randint(1, 100) <= distancing else False
-        self.recovery_death_speed = recovery_death_speed
-        self.mortality = mortality
-        self.recovered_immunity = True if recovered_immunity == 1 else False
-
-        self.state = "sick" if random.randint(1, 100) <= initial_infected else "healthy"
+class Person:
+    def __init__(self, center, factors):
+        self.x, self.y = center
+        angle = random.uniform(0, math.tau)
+        self.dx, self.dy = math.cos(angle), math.sin(angle)
+        self.stationary = random.randrange(100) < factors[2]
+        self.state = "sick" if random.randrange(100) < factors[6] else "healthy"
         self.start_day = 0
 
-        self.colour = GREEN
-        self.direction = random.randint(1, 360) * (math.pi / 180)
-        self.xc = math.cos(self.direction)
-        self.yc = math.sin(self.direction)
+    def move(self):
+        if self.stationary:
+            return
+        self.x += self.dx
+        self.y += self.dy
+        if self.x < 24 or self.x > 776:
+            self.x = min(776, max(24, self.x))
+            self.dx *= -1
+        if self.y < 104 or self.y > 576:
+            self.y = min(576, max(104, self.y))
+            self.dy *= -1
 
-    # Updates person every frame
-    def update(self, day, people, dead_people):
-        if self.state == "sick":
-            self.colour = RED
-            if day - self.start_day >= self.recovery_death_speed:
-                if random.randint(1, 100) <= self.mortality:
-                    people.remove(self)
-                    dead_people.append(self)
-                else:
-                    if self.recovered_immunity:
-                        self.state = "recovered"
-                        self.colour = PINK
-                    else:
-                        self.state = "healthy"
-                        self.colour = GREEN
 
-        if self.distancing is False:
-            self.center = (self.center[0] + self.speed * self.xc, self.center[1] + self.speed * self.yc)
+def resolve_contact(first, second):
+    dx, dy = second.x - first.x, second.y - first.y
+    separation = math.hypot(dx, dy)
+    if separation > 16:
+        return False
+    nx, ny = (dx / separation, dy / separation) if separation else (1, 0)
+    overlap = 16 - separation + 0.01
+    moving = int(not first.stationary) + int(not second.stationary)
+    if moving:
+        if not first.stationary:
+            first.x -= nx * overlap / moving
+            first.y -= ny * overlap / moving
+            if first.dx * nx + first.dy * ny > 0:
+                first.dx *= -1
+                first.dy *= -1
+        if not second.stationary:
+            second.x += nx * overlap / moving
+            second.y += ny * overlap / moving
+            if second.dx * nx + second.dy * ny < 0:
+                second.dx *= -1
+                second.dy *= -1
+    for person in (first, second):
+        person.x = min(776, max(24, person.x))
+        person.y = min(576, max(104, person.y))
+    return True
 
-        if self.center[0] >= 577:
-            self.center = (576, self.center[1])
-            self.xc = -self.xc
-        elif self.center[0] <= 23:
-            self.center = (24, self.center[1])
-            self.xc = -self.xc
 
-        if self.center[1] >= 376:
-            self.center = (self.center[0], 375)
-            self.yc = -self.yc
-        elif self.center[1] <= 83:
-            self.center = (self.center[0], 84)
-            self.yc = -self.yc
+class App:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode(SIZE)
+        pygame.display.set_caption("Disease Propagation")
+        self.clock = pygame.time.Clock()
+        self.font = pygame.font.Font(None, 28)
+        self.heading = pygame.font.Font(None, 40)
+        self.running = True
 
-        pygame.draw.circle(screen, self.colour, self.center, self.radius)
-
-    # What to do when colliding with someone else
-    def collided(self, p2, day):
-
-        if self.state == "healthy" and p2.state == "sick":
-            if random.randint(1, 100) <= self.cont:
-                self.start_day = day
-                self.state = "sick"
-
-        self.xc = -self.xc
-        self.yc = -self.yc
-        while distance(self.center, p2.center) < 17:
-            self.center = (self.center[0] + self.speed * self.xc, self.center[1] + self.speed * self.yc)
-            pygame.draw.circle(screen, self.colour, self.center, self.radius)
-
-# Shows plot of disease data at the end
-def show_plot(x_vals, y_vals, z_vals, max_day, title='Title', x_label='X-axis', y_label='Y-axis',
-              colors=['green', 'red', 'magenta']):
-    # Create an array with the positions of each bar along the x-axis
-    barWidth = 0.25
-    r1 = np.arange(max_day)
-    r2 = [x + barWidth for x in r1]
-    r3 = [x + barWidth for x in r2]
-
-    # Create the bars
-    plt.bar(r1, x_vals, color=colors[0], width=barWidth, edgecolor='grey', label='Healthy')
-    plt.bar(r2, y_vals, color=colors[1], width=barWidth, edgecolor='grey', label='Sick')
-    plt.bar(r3, z_vals, color=colors[2], width=barWidth, edgecolor='grey', label='Recovered')
-
-    # Add xticks on the middle of the group bars
-    plt.xlabel(x_label, fontweight='bold')
-    plt.ylabel(y_label, fontweight='bold')
-    plt.xticks([r + barWidth for r in range(max_day)], range(1, max_day + 1))
-
-    # Create legend & Show graphic
-    plt.title(title)
-    plt.legend()
-
-    # use .show instead of the above two lines to display the plot
-    plt.show()
-
-# Main simulation
-def simulation(cont, population, distancing, recovery_speed, mortality, recovered_immunity, initial_infected):
-    people = []
-    dead_people = []
-    # Makes sure values are usable
-    if population > 3 or population < 1:
-        population = 2
-    if cont > 100 or cont < 0:
-        cont = 50
-    if distancing > 100 or distancing < 0:
-        distancing = 50
-    if recovery_speed < 0:
-        recovery_speed = 3
-    if mortality > 100 or mortality < 0:
-        mortality = 50
-    if initial_infected > 100 or initial_infected < 0:
-        initial_infected = 50
-
-    # Creates population
-    for x in range(50, 560, population * 75):
-        for y in range(95, 370, 50):
-            people.append(
-                Person(cont, distancing, recovery_speed, mortality, recovered_immunity, initial_infected, (x, y)))
-
-    sim_speed = 2000
-    day = 0
-    start_time = pygame.time.get_ticks()
-
-    # Healthy, recovered, dead people every day
-    plot_vals_h = []
-    plot_vals_r = []
-    plot_vals_s = []
-
-    # Controls:
-    for i in range(10):
-        print()
-    print("Press left and right arrow keys to change the speed, and the space_bar to end the simulation.")
-
-    while True:
-        screen.fill(WHITE)
-        centers = []
-        centersP = {}
-        colliding_points = []
-        TICK = 90000 // sim_speed
-
-        # Speed and Day text
-        speed_font = pygame.font.Font('freesansbold.ttf', 22)
-        speed_text = speed_font.render(f'Speed: {TICK}', True, BLACK)
-        day_text = speed_font.render(f'Day: {day}', True, BLACK)
-        screen.blit(speed_text, (450, 20))
-        screen.blit(day_text, (20, 20))
-
-        # Add Days
-        if pygame.time.get_ticks() - start_time >= sim_speed:
-            healthy = 0
-            recovered = 0
-            sick = 0
-            for person in people:
-                state = person.state
-                if state == "healthy":
-                    healthy += 1
-                elif state == "recovered":
-                    recovered += 1
-                elif state == "sick":
-                    sick += 1
-
-            plot_vals_h.append(healthy)
-            plot_vals_r.append(recovered)
-            plot_vals_s.append(sick)
-
-            day += 1
-            start_time = pygame.time.get_ticks()
-
-            if day >= 365:
-                weeks = (day // 7) + 1
-                x_vals = [plot_vals_h[i] for i in range(0, len(plot_vals_h), 7)]
-                y_vals = [plot_vals_s[i] for i in range(0, len(plot_vals_s), 7)]
-                z_vals = [plot_vals_r[i] for i in range(0, len(plot_vals_r), 7)]
-                show_plot(x_vals, y_vals, z_vals, weeks, 'Disease Stats', 'Week', 'Amount of People',
-                          ['green', 'red', 'magenta'])
-                break
-
-        # Title
-        title_font = pygame.font.Font('freesansbold.ttf', 32)
-        title_text = title_font.render('Simulation', True, BLACK)
-        screen.blit(title_text, (200, 15))
-
-        # Boundaries
-        top = pygame.Rect((0, 60), (600, 15))
-        bottom = pygame.Rect((0, 385), (600, 15))
-        left = pygame.Rect((0, 75), (15, 310))
-        right = pygame.Rect((585, 75), (15, 310))
-        pygame.draw.rect(screen, GRAY, top)
-        pygame.draw.rect(screen, GRAY, bottom)
-        pygame.draw.rect(screen, GRAY, left)
-        pygame.draw.rect(screen, GRAY, right)
-
-        # Updates each person and their collisions
-        for person in people:
-            person.update(day, people, dead_people)
-            centers.append(person.center)
-            centersP[person.center] = person
-
-        cols = collisions(centers, colliding_points)
-        for points in cols:
-            p1 = centersP[points[0]]
-            p2 = centersP[points[1]]
-            p1.collided(p2, day)
-            p2.collided(p1, day)
-
-        # Event handler
-        for event in pygame.event.get():
+    def events(self):
+        events = pygame.event.get()
+        for event in events:
             if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RIGHT and sim_speed >= 333:
-                    sim_speed -= 30
-                if event.key == pygame.K_LEFT and sim_speed <= 9750:
-                    sim_speed += 50
-                if event.key == pygame.K_SPACE:
-                    weeks = (day // 7) + 1
-                    x_vals = [plot_vals_h[i] for i in range(0, len(plot_vals_h), 7)]
-                    y_vals = [plot_vals_s[i] for i in range(0, len(plot_vals_s), 7)]
-                    z_vals = [plot_vals_r[i] for i in range(0, len(plot_vals_r), 7)]
-                    show_plot(x_vals, y_vals, z_vals, weeks, 'Disease Stats', 'Week', 'Amount of People',
-                              ['green', 'red', 'magenta'])
-                    break
+                self.running = False
+        return events
 
-        CLOCK.tick(TICK)
+    def text(self, text, y, color=BLACK, large=False):
+        font = self.heading if large else self.font
+        # Wrap text to keep prompts and error messages within the window.
+        line = ""
+        for word in str(text).split():
+            candidate = f"{line} {word}".strip()
+            if font.size(candidate)[0] > 750 and line:
+                self.screen.blit(font.render(line, True, color), (25, y))
+                y += 30
+                line = word
+            else:
+                line = candidate
+        self.screen.blit(font.render(line, True, color), (25, y))
+
+    def frame(self):
         pygame.display.flip()
+        self.clock.tick(60)
 
-# New screen which asks for factors of the new disease
-def new():
-    factors = []
-    prompt = 0
-    while True:
-        screen.fill(WHITE)
-
-        # Event handler
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                break
-
-        #Inputs
-        prompts = ["Enter percentage chance of getting infected after contact (contagiousness): ",
-                   "Enter the population size 1-3 (1 being largest, 3 being smallest): ",
-                   "Enter the percentage of the population social distancing: ",
-                   "Enter the amount of days it will take to recover: ",
-                   "Enter the mortality rate (percentage): ",
-                   "Enter 1 if recovered immunity is true, and 2 if it is false: ",
-                   "Enter the percentage of the population that will start infected: "]
-        curr_prompt = prompts[prompt]
-        prompt_font = pygame.font.Font('freesansbold.ttf', 16)
-        prompt_text = prompt_font.render(f'{curr_prompt}', True, BLACK)
-        screen.blit(prompt_text, (5, 200))
-
-        pygame.display.flip()
-
-        curr_factor = int(input(curr_prompt))
-        factors.append(curr_factor)
-        prompt += 1
-        if len(factors) == 7:
-            print()
-            save_it = int(input("Would you like to save this disease? (1 for yes, 2 for no): "))
-            if save_it == 1:
-                name = input("Enter the name of the disease: ")
-                saved_diseases = open("saved.txt", "a")
-                saved_diseases.write(name + " " + str(factors))
-                saved_diseases.write("\n")
-                saved_diseases.close()
-
-            simulation(factors[0], factors[1], factors[2], factors[3], factors[4], factors[5], factors[6])
-
-        CLOCK.tick(30)
-
-# Saved menu to cycle through saved diseases
-def saved():
-    print("Click left and right arrow keys to cycle through saved diseases.")
-    print("Press enter to start the simulation for the selected disease.")
-    saved = open("saved.txt", "r")
-    length = -1
-    lines = []
-    for line in saved:
-        lines.append(line)
-        length += 1
-    curr_line = 0
-
-    # Current saved attributes
-    curr_saved = lines[curr_line]
-
-    name = ""
-    for letter in curr_saved:
-        if letter != "[":
-            name = name + letter
-        else:
-            break
-    factor_list_str = ""
-    for i in range(len(curr_saved) - 1, -1, -1):
-        if curr_saved[i] != "[":
-            factor_list_str = factor_list_str + curr_saved[i]
-        else:
-            factor_list_str = factor_list_str + "["
-            break
-
-    factor_list_str = factor_list_str[::-1]
-    factor_list = ast.literal_eval(factor_list_str)
-    rec_imm = True if factor_list[5] == 1 else False
-
-    while True:
-        screen.fill(WHITE)
-
-        title_font = pygame.font.Font('freesansbold.ttf', 32)
-        title_text = title_font.render(f"Saved: {name}", True, BLACK)
-        screen.blit(title_text, (5, 20))
-
-        factor_font = pygame.font.Font('freesansbold.ttf', 22)
-
-        cont_text = factor_font.render(f"Contagiousness: {factor_list[0]}", True, BLACK)
-        pop_text = factor_font.render(f"Population Size: {factor_list[1]}", True, BLACK)
-        dist_text = factor_font.render(f"Social Distancing: {factor_list[2]}", True, BLACK)
-        rec_time_text = factor_font.render(f"Recovery Days: {factor_list[3]}", True, BLACK)
-        mort_rate_text = factor_font.render(f"Mortality Rate: {factor_list[4]}", True, BLACK)
-        rec_imm_text = factor_font.render(f"Recovered Immunity: {rec_imm}", True, BLACK)
-        init_infec_text = factor_font.render(f"Initial Infected: {factor_list[6]}", True, BLACK)
-
-        screen.blit(cont_text, (15, 60))
-        screen.blit(pop_text, (15, 100))
-        screen.blit(dist_text, (15, 140))
-        screen.blit(rec_time_text, (15, 180))
-        screen.blit(mort_rate_text, (15, 220))
-        screen.blit(rec_imm_text, (15, 260))
-        screen.blit(init_infec_text, (15, 300))
-
-        # Event handler
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                break
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RIGHT and curr_line < length:
-                    curr_line += 1
-                    # Updates saved attributes
-                    curr_saved = lines[curr_line]
-
-                    name = ""
-                    for letter in curr_saved:
-                        if letter != "[":
-                            name = name + letter
-                        else:
-                            break
-                    factor_list_str = ""
-                    for i in range(len(curr_saved) - 1, -1, -1):
-                        if curr_saved[i] != "[":
-                            factor_list_str = factor_list_str + curr_saved[i]
-                        else:
-                            factor_list_str = factor_list_str + "["
-                            break
-
-                    factor_list_str = factor_list_str[::-1]
-                    factor_list = ast.literal_eval(factor_list_str)
-                    rec_imm = True if factor_list[5] == 1 else False
-
-                elif event.key == pygame.K_LEFT and curr_line > 0:
-                    curr_line -= 1
-                    # Updates saved attributes
-                    curr_saved = lines[curr_line]
-
-                    name = ""
-                    for letter in curr_saved:
-                        if letter != "[":
-                            name = name + letter
-                        else:
-                            break
-                    factor_list_str = ""
-                    for i in range(len(curr_saved) - 1, -1, -1):
-                        if curr_saved[i] != "[":
-                            factor_list_str = factor_list_str + curr_saved[i]
-                        else:
-                            factor_list_str = factor_list_str + "["
-                            break
-
-                    factor_list_str = factor_list_str[::-1]
-                    factor_list = ast.literal_eval(factor_list_str)
-                    rec_imm = True if factor_list[5] == 1 else False
+    def ask(self, title, low=None, high=None):
+        value, error = "", ""
+        while self.running:
+            for event in self.events():
+                if event.type != pygame.KEYDOWN:
+                    continue
+                if event.key == pygame.K_ESCAPE:
+                    return None
+                if event.key == pygame.K_BACKSPACE:
+                    value = value[:-1]
                 elif event.key == pygame.K_RETURN:
-                    simulation(factor_list[0], factor_list[1], factor_list[2], factor_list[3], factor_list[4],
-                               factor_list[5], factor_list[6])
-        pygame.display.flip()
+                    if low is None:
+                        if value.strip() and not any(c in value for c in "[]"):
+                            return value.strip()
+                        error = "Enter a name without brackets."
+                    else:
+                        try:
+                            number = int(value)
+                            if low <= number <= high:
+                                return number
+                        except ValueError:
+                            pass
+                        error = f"Enter a whole number from {low} to {high}."
+                elif event.unicode.isprintable() and len(value) < 60:
+                    value += event.unicode
+            self.screen.fill(WHITE)
+            self.text(title, 60, large=True)
+            self.text(value + "|", 230)
+            self.text(error, 320, RED)
+            self.text("Enter to continue. Esc to return to the menu.", 530)
+            self.frame()
+        return None
 
-# Main menu
-def menu():
-    # Menu Text
-    title_font = pygame.font.Font('freesansbold.ttf', 32)
-    selection_font = pygame.font.Font('freesansbold.ttf', 32)
-    title_text = title_font.render('Disease Propagation', True, BLACK)
-    selection_text_new = selection_font.render('New', True, BLACK)
-    selection_text_saved = selection_font.render('Saved', True, BLACK)
-    selection_text_new_rect = selection_text_new.get_rect()
-    selection_text_saved_rect = selection_text_saved.get_rect()
-    selection_text_new_rect.center = (150, 200)
-    selection_text_saved_rect.center = (410, 200)
-    selection_new_bg = pygame.Rect((0, 0), (100, 50))
-    selection_saved_bg = pygame.Rect((0, 0), (120, 50))
-    selection_new_bg.center = selection_text_new_rect.center
-    selection_saved_bg.center = selection_text_saved_rect.center
-    new_bg_c = GREEN
-    saved_bg_c = RED
-    while True:
-        screen.fill(WHITE)
-        mouse_pos = pygame.mouse.get_pos()
+    def new(self):
+        factors = []
+        for title, low, high in FIELDS:
+            value = self.ask(title, low, high)
+            if value is None:
+                return
+            factors.append(value)
+        save = self.ask("Save this disease? (1 = yes, 2 = no)", 1, 2)
+        if save is None:
+            return
+        if save == 1:
+            name = self.ask("Disease name")
+            if name is None:
+                return
+            try:
+                save_disease(name, factors)
+            except (OSError, ValueError) as error:
+                self.notice(f"Could not save: {error}")
+        if self.running:
+            self.simulation(factors)
 
-        # Event handler
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                break
+    def notice(self, message):
+        while self.running:
+            events = self.events()
+            if any(e.type == pygame.KEYDOWN for e in events):
+                return
+            self.screen.fill(WHITE)
+            self.text(message, 120)
+            self.text("Press any key to continue.", 530)
+            self.frame()
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if selection_new_bg.collidepoint(mouse_pos):
-                    new()
-                elif selection_saved_bg.collidepoint(mouse_pos):
-                    saved()
+    def saved(self):
+        diseases, message = load_diseases()
+        index = 0
+        while self.running:
+            for event in self.events():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return
+                    if diseases:
+                        if event.key == pygame.K_RIGHT:
+                            index = (index + 1) % len(diseases)
+                        elif event.key == pygame.K_LEFT:
+                            index = (index - 1) % len(diseases)
+                        elif event.key == pygame.K_RETURN:
+                            self.simulation(diseases[index][1])
+            self.screen.fill(WHITE)
+            if diseases:
+                name, factors = diseases[index]
+                self.text(f"Saved {index + 1}/{len(diseases)}: {name}", 20, large=True)
+                for row, ((label, _, _), value) in enumerate(zip(FIELDS, factors)):
+                    self.text(f"{label}: {value}", 115 + row * 42)
+            else:
+                self.text("No valid saved diseases. Create one from New.", 100)
+            self.text(message, 440, RED)
+            self.text("Left / Right: choose | Enter: run | Esc: menu", 545)
+            self.frame()
 
-        # Selection text
-        screen.blit(title_text, (145, 15))
-        pygame.draw.rect(screen, new_bg_c, selection_new_bg)
-        pygame.draw.rect(screen, saved_bg_c, selection_saved_bg)
-        screen.blit(selection_text_new, selection_text_new_rect)
-        screen.blit(selection_text_saved, selection_text_saved_rect)
+    def results(self, history):
+        # Render directly into Pygame; no Tkinter or second window is required.
+        try:
+            from matplotlib.figure import Figure
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
 
-        # Selection collision
-        if selection_new_bg.collidepoint(mouse_pos):
-            new_bg_c = GRAY
-        elif selection_saved_bg.collidepoint(mouse_pos):
-            saved_bg_c = GRAY
-        else:
-            new_bg_c = GREEN
-            saved_bg_c = RED
+            figure = Figure(figsize=(8, 5.2), dpi=100)
+            canvas = FigureCanvasAgg(figure)
+            axes = figure.subplots()
+            days = list(range(len(history)))
+            for index, (label, color) in enumerate(zip(
+                    ("Healthy", "Sick", "Recovered", "Dead"),
+                    ("green", "red", "magenta", "gray"))):
+                axes.plot(days, [row[index] for row in history], label=label,
+                          color=color, marker="o" if len(history) == 1 else None)
+            axes.set(xlabel="Day", ylabel="People", title="Disease Stats")
+            axes.set_ylim(bottom=0)
+            axes.legend()
+            figure.tight_layout()
+            canvas.draw()
+            chart = pygame.image.frombuffer(
+                bytes(canvas.buffer_rgba()), canvas.get_width_height(), "RGBA").copy()
+        except (ImportError, RuntimeError) as error:
+            self.notice(f"Could not display the chart: {error}")
+            return
 
-        CLOCK.tick(30)
-        pygame.display.flip()
+        while self.running:
+            for event in self.events():
+                if event.type == pygame.KEYDOWN and event.key in (
+                        pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+                    return
+            if not self.running:
+                return
+            self.screen.fill(WHITE)
+            self.screen.blit(chart, (0, 0))
+            self.text("Enter / Space / Esc: return", 550)
+            self.frame()
+
+    def simulation(self, factors):
+        people = [Person((x, y), factors)
+                  for x in range(50, 760, factors[1] * 75)
+                  for y in range(125, 560, 50)]
+        day, dead = 0, 0
+        interval = 2000
+        elapsed = 0.0
+        step_ms = 1000 / 60
+        steps = 0
+        history = []
+
+        def record():
+            history.append(tuple(sum(p.state == state for p in people)
+                                 for state in ("healthy", "sick", "recovered")) + (dead,))
+
+        record()
+        previous = pygame.time.get_ticks()
+        while self.running:
+            now = pygame.time.get_ticks()
+            # Scale one shared simulation clock, independent of drawing speed.
+            elapsed += (now - previous) * (2000 / interval)
+            previous = now
+            for event in self.events():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return
+                    if event.key == pygame.K_SPACE:
+                        self.results(history)
+                        return
+                    if event.key == pygame.K_RIGHT:
+                        interval = max(100, interval - 100)
+                    elif event.key == pygame.K_LEFT:
+                        interval = min(10000, interval + 100)
+            if not self.running:
+                return
+            while elapsed + 1e-9 >= step_ms:
+                elapsed = max(0.0, elapsed - step_ms)
+                for person in people:
+                    person.move()
+                # Each pair is considered once; use identities instead of coordinates.
+                contacts = []
+                states = {person: person.state for person in people}
+                for index, first in enumerate(people):
+                    for second in people[index + 1:]:
+                        if resolve_contact(first, second):
+                            contacts.append((first, second))
+                for first, second in contacts:
+                    for target, source in ((first, second), (second, first)):
+                        if (states[target] == "healthy" and states[source] == "sick"
+                                and target.state == "healthy" and random.randrange(100) < factors[0]):
+                            target.state, target.start_day = "sick", day
+                steps += 1
+                if steps % 120 == 0:
+                    day += 1
+                    survivors = []
+                    for person in people:
+                        if person.state == "sick" and day - person.start_day >= factors[3]:
+                            if random.randrange(100) < factors[4]:
+                                dead += 1
+                                continue
+                            person.state = "recovered" if factors[5] == 1 else "healthy"
+                        survivors.append(person)
+                    people = survivors
+                    record()
+                    if day >= 365:
+                        self.results(history)
+                        return
+            self.screen.fill(WHITE)
+            self.text(f"Day: {day} | Speed: {2000 / interval:.1f}x | Dead: {dead}", 10)
+            self.text("Arrows: speed | Space: results | Esc: menu", 50)
+            pygame.draw.rect(self.screen, (128, 128, 128), (15, 95, 770, 490), 8)
+            colors = {"healthy": GREEN, "sick": RED, "recovered": PINK}
+            for person in people:
+                pygame.draw.circle(self.screen, colors[person.state], (round(person.x), round(person.y)), 8)
+            self.frame()
+
+    def run(self):
+        try:
+            while self.running:
+                buttons = [(pygame.Rect(130, 240, 220, 75), "New", self.new),
+                           (pygame.Rect(450, 240, 220, 75), "Saved", self.saved)]
+                for event in self.events():
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                        self.running = False
+                    elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        for rect, _, action in buttons:
+                            if rect.collidepoint(event.pos):
+                                action()
+                                break
+                if not self.running:
+                    break
+                self.screen.fill(WHITE)
+                self.text("Disease Propagation", 70, large=True)
+                for rect, label, _ in buttons:
+                    color = (190, 190, 190) if rect.collidepoint(pygame.mouse.get_pos()) else (180, 215, 235)
+                    pygame.draw.rect(self.screen, color, rect, border_radius=8)
+                    self.screen.blit(self.heading.render(label, True, BLACK), (rect.x + 65, rect.y + 20))
+                self.text("Choose New or Saved. Esc closes the app.", 530)
+                self.frame()
+        finally:
+            pygame.quit()
 
 
-menu()
+if __name__ == "__main__":
+    App().run()
