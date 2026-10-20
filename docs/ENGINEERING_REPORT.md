@@ -85,7 +85,7 @@ The model is educational and is not an epidemiological prediction tool. Fixed-st
 
 Performance results apply to the measured machine, settings, and seeded layouts, not every laptop. The original model has known defects and cannot be an exact behavioral oracle; comparisons distinguish it from the corrected pre-refactor app. Native desktop interaction and clean-environment installation remain manual verification steps.
 
-The remote URL and repository folder retain their historical spelling. README explains how the owner can rename the repository later. Existing tracked editor metadata was retained, while future local files are ignored. No commits, pushes, remote changes, or repository rename were performed.
+At the time of the refactor, the remote URL and repository folder retained their historical spelling. The owner has since renamed the GitHub repository to [Disease-Propagation-Simulator](https://github.com/abubakrnafees/Disease-Propagation-Simulator); the README now uses that URL. Existing local folders may still have the original name. Historical source snapshots and checksums are unchanged. Existing tracked editor metadata was retained, while future local files are ignored. No commits, pushes, remote changes, or repository rename were performed by the refactoring or documentation updates.
 
 Potential future work: data export, UI seed controls, accessibility, more benchmark hardware, and calibrated disease models. None is presented as completed.
 

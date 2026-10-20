@@ -20,14 +20,14 @@ This animation captures the actual application renderer using seed 42 at 4x spee
 Use Windows 64-bit Python 3.13. The measured interpreter identifies as CPython 3.13.0rc3; exact versions are recorded in [benchmark_results.json](docs/benchmark_results.json). Python 3.14+ compatibility is not established here.
 
 ~~~powershell
-git clone https://github.com/abubakrnafees/Disease-Propigation-Simulator.git
-cd Disease-Propigation-Simulator
+git clone https://github.com/abubakrnafees/Disease-Propagation-Simulator.git
+cd Disease-Propagation-Simulator
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe main.py
 ~~~
 
-If you already have the repository and environment, use the last two commands. Explicitly using .venv avoids installing dependencies into one Python and running another. In VS Code, use **Python: Select Interpreter** and choose .venv\Scripts\python.exe.
+If you already have the repository and environment, open a terminal in your existing checkout and use the last two commands. Renaming a GitHub repository does not rename an existing local folder. Explicitly using .venv avoids installing dependencies into one Python and running another. In VS Code, use **Python: Select Interpreter** and choose .venv\Scripts\python.exe.
 
 Runtime dependencies are Pygame and Matplotlib. NumPy and Pillow are Matplotlib dependencies; Pillow is explicitly listed in requirements-dev.txt for media capture. Tests use standard-library unittest.
 
@@ -141,4 +141,4 @@ This is an educational computational model, not a validated epidemiological pred
 
 Possible future work includes data export, scenario seed controls in the UI, accessibility improvements, benchmarks on more hardware, and calibrated epidemiological models. These are not implemented.
 
-The repository URL retains the historical spelling Disease-Propigation-Simulator; display text uses **Propagation**. To rename later, change the name in GitHub settings, update origin to the new URL, and update clone instructions and external links. No repository rename, remote change, commit, or push was performed during this refactor.
+The repository is [Disease-Propagation-Simulator](https://github.com/abubakrnafees/Disease-Propagation-Simulator). Historical source snapshots and checksums in `docs/baselines/` are preserved unchanged; archival references may retain the original spelling.
