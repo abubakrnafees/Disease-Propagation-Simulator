@@ -1,0 +1,6 @@
+{
+  "original_commit": "bd8d01afc84b385f6a484ba71474dc8b73271cad",
+  "original_sha256": "6d90e270796abc0400d2aedf231b1e36f2801ee7074927b44a473967ae2a93c3",
+  "pre_refactor_sha256": "dd9ad19210e895edb3c4c3aee012cf63c17312acc32299a8e5e23fc8a42a79fa",
+  "note": "Original and current source snapshots captured before modular refactor. No history rewritten."
+}

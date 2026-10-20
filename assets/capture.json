@@ -1,0 +1,25 @@
+{
+  "seed": 42,
+  "config": [
+    45,
+    1,
+    15,
+    10,
+    5,
+    1,
+    10
+  ],
+  "frames": 80,
+  "steps_per_frame": 24,
+  "gif_duration_ms": 100,
+  "gif_display_speed": 4.0,
+  "chart_day": 45,
+  "final_counts": [
+    3,
+    0,
+    81,
+    6
+  ],
+  "headless": true,
+  "description": "Actual App drawing methods captured from Pygame surfaces."
+}

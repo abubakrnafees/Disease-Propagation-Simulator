@@ -1,0 +1,12 @@
+# Local environments, Python caches, and editor state
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+.coverage
+htmlcov/
+# Reproducible but machine-specific scratch data
+.mplconfig/

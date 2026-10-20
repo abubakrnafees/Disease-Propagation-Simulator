@@ -1,0 +1,3 @@
+-r requirements.txt
+# Only needed to regenerate the demonstration GIF. Tests use unittest.
+Pillow>=10

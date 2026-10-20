@@ -1,0 +1,292 @@
+{
+  "environment": {
+    "python": "3.13.0rc3 (tags/v3.13.0rc3:fae84c7, Oct  1 2024, 03:02:33) [MSC v.1941 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 197 Stepping 2, GenuineIntel",
+    "timer": "perf_counter_ns",
+    "gc_during_timing": "disabled",
+    "rendering": false,
+    "run_utc": "2026-10-20T01:53:18.118936+00:00",
+    "dependencies": {
+      "pygame": "2.6.1",
+      "matplotlib": "3.11.2"
+    },
+    "baseline_manifest": {
+      "original_commit": "bd8d01afc84b385f6a484ba71474dc8b73271cad",
+      "original_sha256": "6d90e270796abc0400d2aedf231b1e36f2801ee7074927b44a473967ae2a93c3",
+      "pre_refactor_sha256": "dd9ad19210e895edb3c4c3aee012cf63c17312acc32299a8e5e23fc8a42a79fa",
+      "note": "Original and current source snapshots captured before modular refactor. No history rewritten."
+    }
+  },
+  "settings": {
+    "repeats": 7,
+    "updates": 480,
+    "warmup": 120,
+    "seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106
+    ],
+    "config": [
+      40,
+      1,
+      25,
+      14,
+      5,
+      2,
+      5
+    ],
+    "arena": [
+      24,
+      776,
+      104,
+      576
+    ]
+  },
+  "engine": [
+    {
+      "population": 30,
+      "layout": "uniform",
+      "strategies": {
+        "brute": {
+          "mean_update_us": 100.47633928571427,
+          "sample_stdev_us": 18.344147764417787,
+          "updates_per_second": 9952.591894857977,
+          "mean_candidate_comparisons": 435.0,
+          "samples_us": [
+            84.190625,
+            84.65166666666667,
+            93.23270833333333,
+            99.210625,
+            93.46583333333332,
+            135.82104166666664,
+            112.761875
+          ]
+        },
+        "grid": {
+          "mean_update_us": 64.75446428571428,
+          "sample_stdev_us": 11.730560809843764,
+          "updates_per_second": 15442.95070665288,
+          "mean_candidate_comparisons": 1.643154761904762,
+          "samples_us": [
+            60.453125,
+            51.9175,
+            71.1425,
+            54.298125,
+            69.08083333333333,
+            86.05958333333332,
+            60.32958333333334
+          ]
+        }
+      },
+      "update_time_reduction_percent": 35.55252435941297,
+      "identical_trajectory": true
+    },
+    {
+      "population": 60,
+      "layout": "uniform",
+      "strategies": {
+        "brute": {
+          "mean_update_us": 389.8466071428571,
+          "sample_stdev_us": 42.16250757268203,
+          "updates_per_second": 2565.1114609638134,
+          "mean_candidate_comparisons": 1770.0,
+          "samples_us": [
+            374.3052083333333,
+            371.3489583333333,
+            367.5679166666667,
+            355.2791666666667,
+            367.9727083333333,
+            474.1129166666667,
+            418.339375
+          ]
+        },
+        "grid": {
+          "mean_update_us": 130.85991071428572,
+          "sample_stdev_us": 16.6953421066858,
+          "updates_per_second": 7641.759760812919,
+          "mean_candidate_comparisons": 7.724702380952381,
+          "samples_us": [
+            120.34208333333333,
+            125.12479166666667,
+            120.67625,
+            114.27291666666667,
+            142.72583333333336,
+            130.25458333333333,
+            162.62291666666667
+          ]
+        }
+      },
+      "update_time_reduction_percent": 66.43297432460844,
+      "identical_trajectory": true
+    },
+    {
+      "population": 90,
+      "layout": "uniform",
+      "strategies": {
+        "brute": {
+          "mean_update_us": 781.3161904761905,
+          "sample_stdev_us": 63.96063895746004,
+          "updates_per_second": 1279.8915627110298,
+          "mean_candidate_comparisons": 4005.0,
+          "samples_us": [
+            836.1022916666666,
+            811.6516666666666,
+            827.0316666666666,
+            827.5160416666666,
+            781.9552083333334,
+            674.94375,
+            710.0127083333334
+          ]
+        },
+        "grid": {
+          "mean_update_us": 175.5847023809524,
+          "sample_stdev_us": 10.215828523131213,
+          "updates_per_second": 5695.256969655467,
+          "mean_candidate_comparisons": 18.322619047619046,
+          "samples_us": [
+            190.37145833333335,
+            175.55583333333334,
+            181.17125,
+            175.08645833333335,
+            167.55145833333333,
+            180.67291666666665,
+            158.68354166666666
+          ]
+        }
+      },
+      "update_time_reduction_percent": 77.52706208814918,
+      "identical_trajectory": true
+    },
+    {
+      "population": 300,
+      "layout": "uniform",
+      "strategies": {
+        "brute": {
+          "mean_update_us": 7591.487261904762,
+          "sample_stdev_us": 356.325566347554,
+          "updates_per_second": 131.72649383450226,
+          "mean_candidate_comparisons": 44850.0,
+          "samples_us": [
+            7316.547916666667,
+            7518.7247916666665,
+            7533.56875,
+            7320.497916666667,
+            7463.75125,
+            8357.204583333332,
+            7630.115625
+          ]
+        },
+        "grid": {
+          "mean_update_us": 619.6593154761905,
+          "sample_stdev_us": 15.809148291439588,
+          "updates_per_second": 1613.789989151585,
+          "mean_candidate_comparisons": 216.8625,
+          "samples_us": [
+            604.1139583333334,
+            614.5725,
+            635.8447916666667,
+            636.97125,
+            635.38875,
+            608.0195833333333,
+            602.704375
+          ]
+        }
+      },
+      "update_time_reduction_percent": 91.83744510004337,
+      "identical_trajectory": true
+    },
+    {
+      "population": 90,
+      "layout": "dense",
+      "strategies": {
+        "brute": {
+          "mean_update_us": 751.5340773809523,
+          "sample_stdev_us": 28.269889939854266,
+          "updates_per_second": 1330.611651683095,
+          "mean_candidate_comparisons": 4005.0,
+          "samples_us": [
+            733.1952083333334,
+            765.831875,
+            797.13375,
+            749.438125,
+            734.5425,
+            711.755,
+            768.8420833333333
+          ]
+        },
+        "grid": {
+          "mean_update_us": 328.9354464285714,
+          "sample_stdev_us": 38.56324726664856,
+          "updates_per_second": 3040.110182279035,
+          "mean_candidate_comparisons": 167.3267857142857,
+          "samples_us": [
+            368.61375,
+            376.5766666666667,
+            308.176875,
+            336.6670833333333,
+            315.4545833333333,
+            262.771875,
+            334.2872916666667
+          ]
+        }
+      },
+      "update_time_reduction_percent": 56.23146623305624,
+      "identical_trajectory": true
+    }
+  ],
+  "original_detector": [
+    {
+      "population": 30,
+      "true_contacts": 2,
+      "original_unique_contacts": 2,
+      "original_missed_contacts": 0,
+      "original_duplicate_contacts": 1,
+      "detection_only_mean_us": {
+        "legacy": 63.134,
+        "brute": 84.152,
+        "grid": 98.004
+      }
+    },
+    {
+      "population": 60,
+      "true_contacts": 4,
+      "original_unique_contacts": 2,
+      "original_missed_contacts": 2,
+      "original_duplicate_contacts": 3,
+      "detection_only_mean_us": {
+        "legacy": 91.528,
+        "brute": 230.772,
+        "grid": 97.424
+      }
+    },
+    {
+      "population": 90,
+      "true_contacts": 7,
+      "original_unique_contacts": 3,
+      "original_missed_contacts": 4,
+      "original_duplicate_contacts": 4,
+      "detection_only_mean_us": {
+        "legacy": 171.552,
+        "brute": 451.794,
+        "grid": 130.78
+      }
+    },
+    {
+      "population": 300,
+      "true_contacts": 116,
+      "original_unique_contacts": 15,
+      "original_missed_contacts": 101,
+      "original_duplicate_contacts": 27,
+      "detection_only_mean_us": {
+        "legacy": 538.568,
+        "brute": 5046.688,
+        "grid": 700.492
+      }
+    }
+  ]
+}
